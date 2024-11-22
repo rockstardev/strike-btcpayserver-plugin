@@ -31,7 +31,7 @@ public class StrikeController : Controller
 	[HttpGet("")]
 	public IActionResult Index(string storeId)
 	{
-		return RedirectToAction(nameof(Dashboard), new { storeId });
+		return RedirectToAction(nameof(Configure), new { storeId });
 	}
 
 	[HttpGet("dashboard")]
