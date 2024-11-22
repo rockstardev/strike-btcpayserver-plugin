@@ -10,11 +10,12 @@
         StoreDashboardViewModel dashboardModel => dashboardModel.StoreId,
         _ => Context.GetImplicitStoreId()
     };
+    Layout = "_Layout";
 }
 
 <div class="sticky-header-setup"></div>
-<div class="sticky-header mb-xl">
-	<h2 class="mt-1 mb-2 mb-lg-4" style="display: flex; align-items: center; justify-content: space-between">
+<div class="sticky-header">
+	<h2 class="mt-1 mb-2 mb-lg-4" style="display: flex; align-items: center; justify-content: space-between; width: 100%">
 		<span>
 			Strike
 		</span>
@@ -29,3 +30,5 @@
 		</div>
 	</nav>
 </div>
+
+@RenderBody()
