@@ -13,15 +13,14 @@ public class StrikePlugin : BaseBTCPayServerPlugin
 {
 	public override IBTCPayServerPlugin.PluginDependency[] Dependencies { get; } =
 	{
-		new() {Identifier = nameof(BTCPayServer), Condition = ">=1.13.3"}
-
+		new() {Identifier = nameof(BTCPayServer), Condition = ">=2.0.0"}
 	};
 
 	public override void Execute(IServiceCollection applicationBuilder)
 	{
-		applicationBuilder.AddSingleton<IUIExtension>(new UIExtension("Strike/LNPaymentMethodSetupTab", "ln-payment-method-setup-tab"));
-		applicationBuilder.AddSingleton<IUIExtension>(new UIExtension("Strike/StrikeNav", "store-integrations-nav"));
-
+		applicationBuilder.AddUIExtension("ln-payment-method-setup-tab", "Strike/LNPaymentMethodSetupTab");
+		applicationBuilder.AddUIExtension("store-integrations-nav", "Strike/StrikeNav");
+		
 		applicationBuilder.AddSingleton<ILightningConnectionStringHandler>(provider => provider.GetRequiredService<StrikeLightningConnectionStringHandler>());
 		applicationBuilder.AddSingleton<StrikeLightningConnectionStringHandler>();
 		applicationBuilder.AddSingleton<StrikeLightningClientFactory>();

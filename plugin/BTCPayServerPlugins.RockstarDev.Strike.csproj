@@ -39,8 +39,7 @@
 		<ProjectReference Include="..\submodules\strike-client\src\Strike.Client\Strike.Client.csproj" />
 	</ItemGroup>
 
-	<!-- This is all so that we can generate entity framework migrations in design mode -->
-	
+	<!-- This is all so that we can generate entity framework migrations in design mode
 	<Target Name="PrepareEntityFrameworkMigrationDependency" BeforeTargets="BeforeBuild">
 		<Copy SourceFiles="..\submodules\btcpayserver\BTCPayServer\bin\Debug\net8.0\BTCPayServer.dll"
 			  DestinationFolder="$(OutputPath)"
@@ -49,7 +48,8 @@
 			  DestinationFolder="$(OutputPath)"
 			  Condition="'$(Configuration)' == 'Debug'" />
 	</Target>
-	
+	 -->
+
 	<ItemGroup Condition="'$(Configuration)' != 'Release'">
 		<PackageReference Include="Microsoft.CodeAnalysis.Common" Version="4.10.0" />
 		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.10.0" />
