@@ -8,12 +8,14 @@ using BTCPayServer.HostedServices;
 using BTCPayServer.Payments;
 using BTCPayServer.Payments.Lightning;
 using BTCPayServer.Plugins.Strike.Persistence;
+using BTCPayServer.Services.Invoices;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using NBXplorer;
 using Strike.Client.CurrencyExchanges;
 using Strike.Client.Invoices;
 using Strike.Client.Models;
+using InvoiceState = Strike.Client.Invoices.InvoiceState;
 
 namespace BTCPayServer.Plugins.Strike;
 
@@ -24,13 +26,15 @@ public class StrikePluginHostedService : EventHostedServiceBase, IDisposable
 	private readonly ILogger<StrikePluginHostedService> _logger;
 	private readonly StrikeDbContextFactory _dbContextFactory;
 	private readonly StrikeLightningClientFactory _hodler;
+	private readonly PaymentMethodHandlerDictionary _handlers;
 
 	public StrikePluginHostedService(EventAggregator eventAggregator, ILogger<StrikePluginHostedService> logger,
-		StrikeDbContextFactory dbContextFactory, StrikeLightningClientFactory hodler) : base(eventAggregator, logger)
+		StrikeDbContextFactory dbContextFactory, StrikeLightningClientFactory hodler, PaymentMethodHandlerDictionary handlers) : base(eventAggregator, logger)
 	{
 		_logger = logger;
 		_dbContextFactory = dbContextFactory;
 		_hodler = hodler;
+		_handlers = handlers;
 	}
 
 	private readonly CancellationTokenSource _cts = new();
@@ -177,9 +181,10 @@ public class StrikePluginHostedService : EventHostedServiceBase, IDisposable
 		// handle expired invoices to stop listening on Strike Api
 		if (evt is InvoiceEvent { Name: InvoiceEvent.Expired } invoiceEvent)
 		{
-			var paymentMethod = new PaymentMethodId("BTC", PaymentTypes.LightningLike);
-			var pm = invoiceEvent.Invoice.GetPaymentMethod(paymentMethod);
-			if (pm?.GetPaymentMethodDetails() is LightningLikePaymentMethodDetails lightning)
+			var btclnid = PaymentTypes.LN.GetPaymentMethodId("BTC");
+			var paymentPrompt = invoiceEvent.Invoice.GetPaymentPrompt(btclnid);
+			var details = _handlers.ParsePaymentPromptDetails(paymentPrompt);
+			if (details is LigthningPaymentPromptDetails lightning)
 			{
 				await using var db = _dbContextFactory.CreateContext();
 				var quote = await db.Quotes.FindAsync(new[] { lightning.InvoiceId }, cancellationToken: cancellationToken);

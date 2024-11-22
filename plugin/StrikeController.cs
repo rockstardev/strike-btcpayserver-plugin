@@ -52,12 +52,6 @@ public class StrikeController : Controller
 	[Authorize(Policy = Policies.CanModifyStoreSettings, AuthenticationSchemes = AuthenticationSchemes.Cookie)]
 	public IActionResult Configure(string storeId, string command, string settings)
 	{
-		var store = HttpContext.GetStoreData();
-		var existing = store.GetSupportedPaymentMethods(_btcPayNetworkProvider).OfType<LightningSupportedPaymentMethod>()
-			.FirstOrDefault(method =>
-				method.PaymentId.PaymentType == LightningPaymentType.Instance &&
-				method.PaymentId.CryptoCode == "BTC");
-
 		return RedirectToAction(nameof(Configure), new { storeId });
 	}
 }
