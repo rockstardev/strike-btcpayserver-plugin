@@ -35,6 +35,9 @@
 		</ProjectReference>
 	</ItemDefinitionGroup>
 	<ItemGroup>
+	  <PackageReference Include="System.Text.Json" Version="8.0.5" />
+	</ItemGroup>
+	<ItemGroup>
 		<ProjectReference Include="..\submodules\btcpayserver\BTCPayServer\BTCPayServer.csproj" />
 		<ProjectReference Include="..\submodules\strike-client\src\Strike.Client\Strike.Client.csproj">
 			<Private>true</Private>
