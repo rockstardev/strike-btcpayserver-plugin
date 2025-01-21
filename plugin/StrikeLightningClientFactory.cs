@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace BTCPayServer.Plugins.Strike;
 
@@ -20,5 +22,20 @@ public class StrikeLightningClientFactory
 	public void AddOrUpdateClient(string tenantId, StrikeLightningClient client)
 	{
 		_clients[tenantId] = client;
+	}
+
+	public string ComputeTenantId(string connectionString)
+	{
+		var sb = new StringBuilder();
+		using (var hash = SHA256.Create())
+		{
+			var enc = Encoding.UTF8;
+			var result = hash.ComputeHash(enc.GetBytes(connectionString));
+
+			foreach (var b in result)
+				sb.Append(b.ToString("x2"));
+		}
+
+		return sb.ToString();
 	}
 }
