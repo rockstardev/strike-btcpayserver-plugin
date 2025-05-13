@@ -1,10 +1,8 @@
 ﻿using System;
-using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using BTCPayServer.Lightning;
-using BTCPayServer.Payments.Lightning;
 using BTCPayServer.Plugins.Strike.Persistence;
 using ExchangeSharp;
 using Microsoft.Extensions.Logging;
@@ -15,7 +13,7 @@ using Strike.Client.Models;
 
 namespace BTCPayServer.Plugins.Strike;
 
-public partial class StrikeLightningClient : IExtendedLightningClient
+public partial class StrikeLightningClient : ILightningClient
 {
 	private readonly StrikeClient _client;
 	public StrikeClient Client => _client;
@@ -26,11 +24,9 @@ public partial class StrikeLightningClient : IExtendedLightningClient
 	private readonly Currency _convertToCurrency;
 	private readonly string _tenantId;
 	private readonly EventAggregator _eventAggregator;
-	private readonly StrikeLightningClientFactory _holder;
 
 	public StrikeLightningClient(StrikeClient client, StrikeDbContextFactory dbContextFactory, 
-		Network network, ILogger logger, Currency convertToCurrency, string tenantId, 
-		EventAggregator eventAggregator, StrikeLightningClientFactory holder)
+		Network network, ILogger logger, Currency convertToCurrency, string tenantId, EventAggregator eventAggregator)
 	{
 		_client = client;
 		_dbContextFactory = dbContextFactory;
@@ -39,7 +35,6 @@ public partial class StrikeLightningClient : IExtendedLightningClient
 		_convertToCurrency = convertToCurrency;
 		_tenantId = tenantId;
 		_eventAggregator = eventAggregator;
-		_holder = holder;
 	}
 
 	public override string ToString()
@@ -115,26 +110,4 @@ public partial class StrikeLightningClient : IExtendedLightningClient
 		}
 
 	}
-
-	public async Task<ValidationResult?> Validate()
-	{
-		var balances = await _client.Balances.GetBalances();
-		if (!balances.IsSuccessStatusCode)
-		{
-			var errorFromServer = balances.Error?.Data;
-			var errorResult = $"The connection failed, check api key. Error: {errorFromServer?.Code} {errorFromServer?.Message}";
-			return new ValidationResult(errorResult);
-		}
-		
-		// Once string is validated we're adding this client to holder because it will be used going forward
-		// This was all clearer to understand when it was in StrikeLightningConnectionStringHandler.CreateInternal
-		var tenantId = _holder.ComputeTenantId(
-			this.ToString().Trim().ToLowerInvariant());
-		_holder.AddOrUpdateClient(tenantId, this);
-
-		return ValidationResult.Success;
-	}
-
-	public string? DisplayName => "Strike API";
-	public Uri? ServerUri => _client.ServerUrl;
 }

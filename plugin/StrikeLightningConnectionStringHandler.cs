@@ -19,15 +19,12 @@ public class StrikeLightningConnectionStringHandler : ILightningConnectionString
 	private readonly IServiceProvider _serviceProvider;
 	private readonly ILoggerFactory _loggerFactory;
 	private readonly EventAggregator _eventAggregator;
-	private readonly StrikeLightningClientFactory _holder;
 
-	public StrikeLightningConnectionStringHandler(IServiceProvider serviceProvider, ILoggerFactory loggerFactory, 
-		EventAggregator eventAggregator, StrikeLightningClientFactory holder)
+	public StrikeLightningConnectionStringHandler(IServiceProvider serviceProvider, ILoggerFactory loggerFactory, EventAggregator eventAggregator)
 	{
 		_serviceProvider = serviceProvider;
 		_loggerFactory = loggerFactory;
 		_eventAggregator = eventAggregator;
-		_holder = holder;
 	}
 
 	public ILightningClient? Create(string connectionString, Network network, out string? error)
@@ -89,8 +86,9 @@ public class StrikeLightningConnectionStringHandler : ILightningConnectionString
 		error = null;
 		
 		// if we already have a client for this tenant, return it
-		var tenantId = _holder.ComputeTenantId(connectionString.Trim().ToLowerInvariant());
-		var existingClient = _holder.GetClient(tenantId);
+		var tenantId = ComputeHash(connectionString.Trim().ToLowerInvariant());
+		var holder = _serviceProvider.GetRequiredService<StrikeLightningClientFactory>();
+		var existingClient = holder.GetClient(tenantId);
 		if (existingClient != null)
 		{
 			return existingClient;
@@ -105,25 +103,37 @@ public class StrikeLightningConnectionStringHandler : ILightningConnectionString
 
 		if (serverUrl != null)
 			client.ServerUrl = serverUrl;
+		
+		// Marfusios brought up a point that we need to verify API key, so adding it back here
+		// Doing it with Task.Run to avoid deadlocks, since we are forced in sync method
+		var balances = Task.Run(async () => await client.Balances.GetBalances()).GetAwaiter().GetResult();
+		if (!balances.IsSuccessStatusCode)
+		{
+			var errorFromServer = balances.Error?.Data;
+			error = $"The connection failed, check api key. Error: {errorFromServer?.Code} {errorFromServer?.Message}";
+			return null;
+		}
 
 		// initialize lightning client that listens on top of StrikeClient
 		var logger = _loggerFactory.CreateLogger<StrikeLightningClient>();
 		var dbContextFactory = _serviceProvider.GetRequiredService<StrikeDbContextFactory>();
 		
-		// NOTICE: Validation of client was moved to StrikeLightningClient.Validate()
-		//
-		// Doing it with Task.Run to avoid deadlocks, since we are forced in sync method
-		// var balances = Task.Run(async () => await client.Balances.GetBalances()).GetAwaiter().GetResult();
-		// if (!balances.IsSuccessStatusCode)
-		// {
-		// 	var errorFromServer = balances.Error?.Data;
-		// 	error = $"The connection failed, check api key. Error: {errorFromServer?.Code} {errorFromServer?.Message}";
-		// 	return null;
-		// }
-		//holder.AddOrUpdateClient(tenantId, new StrikeLightningClient(client, dbContextFactory, network, logger, convertToCurrency, tenantId, _eventAggregator));
-		//return holder.GetClient(tenantId);
-		
-		var strikeClient = new StrikeLightningClient(client, dbContextFactory, network, logger, convertToCurrency, tenantId, _eventAggregator, _holder);
-		return strikeClient;
+		holder.AddOrUpdateClient(tenantId, new StrikeLightningClient(client, dbContextFactory, network, logger, convertToCurrency, tenantId, _eventAggregator));
+		return holder.GetClient(tenantId);
+	}
+
+	private static string ComputeHash(string value)
+	{
+		var sb = new StringBuilder();
+		using (var hash = SHA256.Create())
+		{
+			var enc = Encoding.UTF8;
+			var result = hash.ComputeHash(enc.GetBytes(value));
+
+			foreach (var b in result)
+				sb.Append(b.ToString("x2"));
+		}
+
+		return sb.ToString();
 	}
 }
